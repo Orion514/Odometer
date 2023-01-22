@@ -12,30 +12,44 @@ import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
-
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+import androidx.lifecycle.ViewModel;
 
-import java.util.Random;
 
-public class OdometerService extends Service {
-    private double distanceMeters;
+public class OdometerService extends Service{
+
+    /**
+     * 内部类Binder
+     * Binder对象定义编程接口供客户端与服务进行交互，如获得OdometerService的引用
+     */
+    public class OdometerBinder extends Binder {
+        OdometerService getOdometer() {
+            return OdometerService.this;
+        }
+    }
+
+    private IBinder binder = new OdometerBinder();
+    private double distanceMeters = 0.0;
     private LocationManager locManager;
     private LocationListener locListener;
+    private Location lastLocation;
 
     @Override
-    public void onCreate(){
+    public void onCreate() {
         super.onCreate();
+
         locManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        String provider = locManager.getBestProvider(new Criteria(),true);
+        String provider = locManager.getBestProvider(new Criteria(), true);
         locListener = new LocationListener() {
-            private Location lastLocation;
+
             @Override
             public void onLocationChanged(@NonNull Location location) {
-                if(lastLocation != null){
+                if(lastLocation == null){
                     lastLocation = location;
                 }
                 distanceMeters += location.distanceTo(lastLocation);
+                lastLocation = location;
             }
 
             @Override
@@ -53,6 +67,15 @@ public class OdometerService extends Service {
         }
     }
 
+
+    public Location getCurrentLocation(){
+        return lastLocation;
+    }
+
+    private boolean isGpsAble(LocationManager lm){
+        return lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)?true:false;
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -63,23 +86,17 @@ public class OdometerService extends Service {
         locListener = null;
     }
 
-    public class OdometerBinder extends Binder{
-        OdometerService getOdometer(){
-            return OdometerService.this;
-        }
-    }
-    private IBinder binder = new OdometerBinder();
-    private Random random = new Random();
-
+    // 回调方法 Return the communication channel to the service.
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
-//         TODO: Return the communication channel to the service.
-//        throw new UnsupportedOperationException("Not yet implemented");
     }
 
     public double getDistance(){
-        return distanceMeters/1000;
-//        return random.nextDouble();
+        return distanceMeters;
+    }
+
+    public void setDistanceMeters(double distanceMeters){
+        this.distanceMeters = distanceMeters;
     }
 }
